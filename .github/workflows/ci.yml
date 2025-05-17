@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[lint,test]"
+          pip install build pytest-jupyter
+
+      - name: Run lint and tests
+        run: bash .github/workflows/lint.sh
+
+      - name: Enable extension
+        run: |
+          jupyter server extension enable jupyter_server_ai_tools
+          jupyter server extension list 2>&1 | grep -ie "jupyter_server_ai_tools.*OK"
+
+      - name: Build sdist
+        run: |
+          python -m build --sdist
+          cp dist/*.tar.gz my_server_extension.tar.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my_server_extension-sdist
+          path: my_server_extension.tar.gz
