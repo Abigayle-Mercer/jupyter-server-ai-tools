@@ -24,7 +24,8 @@ dependencies = ["jupyter_server>=1.6,<3"]
 [project.optional-dependencies]
 test = [
   "pytest>=7.0",
-  "pytest-jupyter[server]>=0.6"
+  "pytest-jupyter[server]>=0.6",
+  "pytest-asyncio>=0.21"
 ]
 lint = [
   "black>=22.6.0",

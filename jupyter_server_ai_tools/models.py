@@ -1,7 +1,7 @@
 import inspect
 from typing import Any, Callable, Dict, Optional, get_type_hints
 
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, model_validator
 
 
 def python_type_to_json_type(py_type: Any) -> str:
@@ -35,7 +35,8 @@ class ToolDefinition(BaseModel):
     callable: Callable
     metadata: Optional[Dict[str, Any]] = None
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def fill_metadata(cls, values):
         fn = values.get("callable")
         metadata = values.get("metadata")

@@ -39,6 +39,7 @@ def find_tools(
                 tool_provider = getattr(module, "jupyter_server_extension_tools")
                 if callable(tool_provider):
                     tools = tool_provider()
+
                     if not isinstance(tools, list):
                         raise TypeError(
                             f"`jupyter_server_extension_tools()` in '{ext_name}' must return a list"
@@ -56,7 +57,7 @@ def find_tools(
                                 raise ValueError("Tool metadata must be a dict")
                             discovered.append(tool.metadata)
                         else:
-                            discovered.append(tool.dict())
+                            discovered.append(tool.model_dump(mode="python"))
         except jsonschema.ValidationError as ve:
             print(f"[find_tools] Schema validation error in '{ext_name}': {ve.message}")
         except Exception as e:
