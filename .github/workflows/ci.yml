@@ -41,7 +41,7 @@ jobs:
         pip uninstall -y "jupyter_server_ai_tools" jupyter_server
         rm -rf "jupyter_server_ai_tools"
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: my_server_extension-sdist
         path: my_server_extension.tar.gz
@@ -54,13 +54,16 @@ jobs:
       - uses: jupyterlab/maintainer-tools/.github/actions/check-links@v1
 
   test_lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
-      - name: Run Linters
-        run: |
-          bash ./.github/workflows/lint.sh
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+        - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+        - name: Install lint + test dependencies
+          run: pip install -e ".[lint,test]"
+
+        - name: Run Linters
+          run: bash ./.github/workflows/lint.sh
 
   check_release:
     runs-on: ubuntu-latest
@@ -76,7 +79,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Distributions
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: jupyter_server_ai_tools-releaser-dist-${{ github.run_number }}
           path: .jupyter_releaser_checkout/dist
@@ -93,7 +96,7 @@ jobs:
       with:
         python-version: '3.8'
         architecture: 'x64'
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v4
       with:
         name: my_server_extension-sdist
     - name: Install and Test
