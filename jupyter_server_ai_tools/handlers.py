@@ -9,7 +9,7 @@ from jupyter_server_ai_tools.tool_registry import find_tools
 class ListToolInfoHandler(APIHandler):
     @tornado.web.authenticated
     async def get(self):
-        metadata_only = True  # Optionally make this dynamic from query param later
+        metadata_only = True
         assert self.serverapp is not None
         raw_tools = find_tools(self.serverapp.extension_manager, return_metadata_only=metadata_only)
 
