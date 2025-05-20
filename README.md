@@ -1,90 +1,105 @@
-# jupyter_server_ai_tools
+# 🧠 jupyter-server-ai-tools
 
-[![Github Actions Status](https://github.com/Abigayle-Mercer/jupyter-server-ai-tools/workflows/Build/badge.svg)](https://github.com/Abigayle-Mercer/jupyter-server-ai-tools/actions/workflows/build.yml)
+[![CI](https://github.com/Abigayle-Mercer/jupyter-server-ai-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/Abigayle-Mercer/jupyter-server-ai-tools/actions/workflows/ci.yml)
 
-A Jupyter Server extension.
+A Jupyter Server extension for discovering and aggregating callable tools from other extensions.
 
-## Requirements
+This project provides a structured way for extensions to declare tools using `ToolDefinition` objects, and for agents or other consumers to retrieve those tools — with optional metadata validation.
 
-- Jupyter Server
+______________________________________________________________________
 
-## Install
+## ✨ Features
 
-To install the extension, execute:
+- ✅ Simple, declarative `ToolDefinition` API
+- ✅ Automatic metadata inference from function signature and docstring
+
+- ✅ Tool discovery across all installed Jupyter extensions
+- ✅ Clean separation between metadata and callable execution
+
+______________________________________________________________________
+
+## 📦 Install
 
 ```bash
 pip install jupyter_server_ai_tools
 ```
 
-## Uninstall
-
-To remove the extension, execute:
+To install for development:
 
 ```bash
-pip uninstall jupyter_server_ai_tools
+git clone https://github.com/Abigayle-Mercer/jupyter-server-ai-tools.git
+cd jupyter-server-ai-tools
+pip install -e ".[lint,test]"
 ```
 
-## Troubleshoot
+## Usage
 
-If you are seeing the frontend extension, but it is not working, check
-that the server extension is enabled:
+#### Expose tools in your own extensions:
 
-```bash
-jupyter server extension list
+```python
+from jupyter_server_ai_tools.models import ToolDefinition
+
+def greet(name: str):
+    """Say hello to someone."""
+    return f"Hello, {name}!"
+
+def jupyter_server_extension_tools():
+    return [ToolDefinition(callable=greet)]
 ```
 
-## Contributing
+#### Discover tools from all extensions:
 
-### Development install
+```python
+from jupyter_server_ai_tools.tool_registry import find_tools
 
-```bash
-# Clone the repo to your local environment
-# Change directory to the jupyter_server_ai_tools directory
-# Install package in development mode - will automatically enable
-# The server extension.
-pip install -e .
+tools = find_tools(extension_manager)
 ```
 
-You can watch the source directory and run your Jupyter Server-based application at the same time in different terminals to watch for changes in the extension's source and automatically rebuild the extension. For example,
-when running JupyterLab:
-
-```bash
-jupyter lab --autoreload
-```
-
-If your extension does not depend a particular frontend, you can run the
-server directly:
-
-```bash
-jupyter server --autoreload
-```
-
-### Running Tests
-
-Install dependencies:
+## 🧪 Running Tests
 
 ```bash
 pip install -e ".[test]"
+pytest
 ```
 
-To run the python tests, use:
+## 🧼 Linting and Formatting
 
 ```bash
-pytest
-
-# To test a specific file
-pytest jupyter_server_ai_tools/tests/test_handlers.py
-
-# To run a specific test
-pytest jupyter_server_ai_tools/tests/test_handlers.py -k "test_get"
+pip install -e ".[lint]"
+bash .github/workflows/lint.sh
 ```
 
-### Development uninstall
+## Tool Output Example
+
+Given the `greet()` tool above, `find_tools(return_metadata_only=True)` will return:
+
+```json
+[
+  {
+    "name": "greet",
+    "description": "Say hello to someone.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    }
+  }
+]
+```
+
+## Impact
+
+This system enables:
+
+- Extension authors to register tools with minimal effort
+- Agent builders to dynamically discover and bind tools
+- Optional schema enforcement when needed
+- Future compatibility with MCP and OpenAPI-based agents
+
+## 🧹 Uninstall
 
 ```bash
 pip uninstall jupyter_server_ai_tools
 ```
-
-### Packaging the extension
-
-See [RELEASE](RELEASE.md)

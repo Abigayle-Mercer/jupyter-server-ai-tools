@@ -1,4 +1,7 @@
 from .extension import Extension
+from .tool_registry import find_tools
+
+__all__ = ["find_tools"]
 
 __version__ = "0.1.0"
 
