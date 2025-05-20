@@ -15,6 +15,4 @@ class Extension(ExtensionApp):
         assert self.serverapp is not None
         base_url = self.serverapp.web_app.settings["base_url"]
         route_pattern = url_path_join(base_url, self.default_url, "tools")
-        self.serverapp.web_app.add_handlers(
-            ".*$", [(route_pattern, ListToolInfoHandler)]
-        )  # ✅ works
+        self.serverapp.web_app.add_handlers(".*$", [(route_pattern, ListToolInfoHandler)])

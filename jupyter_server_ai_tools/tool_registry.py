@@ -1,14 +1,13 @@
 import importlib
-from typing import Any, Dict, List, Optional
-
-import jsonschema
+import logging
+from typing import Any, Dict, List, cast
 
 from jupyter_server_ai_tools.models import ToolDefinition
 
+logger = logging.getLogger(__name__)
 
-def find_tools(
-    extension_manager, schema: Optional[dict] = None, return_metadata_only: bool = False
-) -> List[Dict[str, Any]]:
+
+def find_tools(extension_manager, return_metadata_only: bool = False) -> List[Dict[str, Any]]:
     """
     Discover and return tools from installed Jupyter server extensions.
 
@@ -17,17 +16,12 @@ def find_tools(
 
     Parameters:
         extension_manager: The Jupyter Server extension manager instance.
-        schema (Optional[dict]): An optional JSON Schema to validate each tool's
-            metadata against. Validation is only applied if the user has provided a
-            schema to validate against.
         return_metadata_only (bool): If True, return only the `metadata` for each tool.
             If False (default), return the full dictionary representation of the tool,
             including both `metadata` and `callable`.
 
     Returns:
-        A list of dictionaries, each representing a tool. The contents depend on
-        `return_metadata_only`. Tools without required fields or invalid structure
-        will raise errors or be skipped.
+        A list of dictionaries, each representing a tool. Invalid tools are skipped with warnings.
     """
     discovered = []
 
@@ -35,32 +29,31 @@ def find_tools(
         try:
             module = importlib.import_module(ext_name)
 
-            if hasattr(module, "jupyter_server_extension_tools"):
-                tool_provider = getattr(module, "jupyter_server_extension_tools")
-                if callable(tool_provider):
-                    tools = tool_provider()
+            tool_provider = getattr(module, "jupyter_server_extension_tools", None)
+            if not callable(tool_provider):
+                continue
 
-                    if not isinstance(tools, list):
-                        raise TypeError(
-                            f"`jupyter_server_extension_tools()` in '{ext_name}' must return a list"
-                        )
+            tools = tool_provider()
 
-                    for tool in tools:
-                        if not isinstance(tool, ToolDefinition):
-                            raise TypeError(f"Tool from '{ext_name}' must be a ToolDefinition")
+            if not isinstance(tools, list):
+                raise TypeError(
+                    f"`jupyter_server_extension_tools()` in '{ext_name}' must return a list"
+                )
 
-                        if schema:
-                            jsonschema.validate(instance=tool.metadata, schema=schema)
+            for tool in tools:
+                if not isinstance(tool, ToolDefinition):
+                    raise TypeError(f"Tool from '{ext_name}' is not a ToolDefinition instance")
 
-                        if return_metadata_only:
-                            if not isinstance(tool.metadata, dict):
-                                raise ValueError("Tool metadata must be a dict")
-                            discovered.append(tool.metadata)
-                        else:
-                            discovered.append(tool.model_dump(mode="python"))
-        except jsonschema.ValidationError as ve:
-            print(f"[find_tools] Schema validation error in '{ext_name}': {ve.message}")
+                if return_metadata_only:
+                    discovered.append(cast(Dict[str, Any], tool.metadata))
+                else:
+                    discovered.append(tool.model_dump(mode="python"))
+
+        except (ImportError, AttributeError) as e:
+            logger.error(f"Failed to import tools from '{ext_name}': {e}")
+        except (TypeError, ValueError) as e:
+            logger.warning(f"Tool definition error in '{ext_name}': {e}")
         except Exception as e:
-            print(f"[find_tools] Failed to load tools from '{ext_name}': {e}")
+            logger.exception(f"Unexpected error while loading tools from '{ext_name}': {e}")
 
     return discovered

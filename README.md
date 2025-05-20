@@ -12,7 +12,7 @@ ______________________________________________________________________
 
 - ✅ Simple, declarative `ToolDefinition` API
 - ✅ Automatic metadata inference from function signature and docstring
-- ✅ Optional schema validation using JSON Schema
+
 - ✅ Tool discovery across all installed Jupyter extensions
 - ✅ Clean separation between metadata and callable execution
 
