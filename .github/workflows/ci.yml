@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.9', '3.10', "3.11" ]
+        python-version: ['3.9', '3.10', '3.11']
 
     steps:
     - name: Checkout
@@ -41,9 +41,11 @@ jobs:
         pip uninstall -y "jupyter_server_ai_tools" jupyter_server
         rm -rf "jupyter_server_ai_tools"
 
-    - uses: actions/upload-artifact@v4
+    - name: Upload artifact
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
+      uses: actions/upload-artifact@v4
       with:
-        name: my_server_extension-sdist-${{ matrix.os }}-py${{ matrix.python-version }}
+        name: my_server_extension-sdist
         path: my_server_extension.tar.gz
 
   check_links:
@@ -54,16 +56,16 @@ jobs:
       - uses: jupyterlab/maintainer-tools/.github/actions/check-links@v1
 
   test_lint:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v2
-        - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
 
-        - name: Install lint + test dependencies
-          run: pip install -e ".[lint,test]"
+      - name: Install lint + test dependencies
+        run: pip install -e ".[lint,test]"
 
-        - name: Run Linters
-          run: bash ./.github/workflows/lint.sh
+      - name: Run Linters
+        run: bash ./.github/workflows/lint.sh
 
   check_release:
     runs-on: ubuntu-latest
@@ -72,8 +74,7 @@ jobs:
       - name: Base Setup
         uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
       - name: Install Dependencies
-        run: |
-          pip install -e .
+        run: pip install -e .
       - name: Check Release
         uses: jupyter-server/jupyter_releaser/.github/actions/check-release@v2
         with:
@@ -87,7 +88,6 @@ jobs:
   test_sdist:
     needs: build
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout
       uses: actions/checkout@v2
