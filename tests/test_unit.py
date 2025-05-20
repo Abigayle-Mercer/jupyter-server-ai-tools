@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from jupyter_server_ai_tools.models import ToolDefinition
-from jupyter_server_ai_tools.tool_registry import find_tools
+from jupyter_server_ai_tools.tool_registry import find_tools, run_tools
 
 # ---------------------------------------------------------------------
 # ToolDefinition Tests
@@ -170,3 +170,147 @@ def test_find_tools_skips_extensions_without_hook():
         result = find_tools(extension_manager)
 
     assert result == []
+
+
+# ---------------------------------------------------------------------
+# run_tools() Tests
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_tools_sync_function_executes_correctly():
+    def say_hello(user: str) -> str:
+        return f"Hello {user}"
+
+    tool = ToolDefinition(callable=say_hello)
+    ext_mod = cast(Any, ModuleType("mock_ext"))
+    ext_mod.jupyter_server_extension_tools = lambda: [tool]
+
+    extension_manager = Mock()
+    extension_manager.extensions = ["mock_ext"]
+
+    with patch("importlib.import_module", return_value=ext_mod):
+        results = await run_tools(
+            extension_manager,
+            tool_calls=[{"name": "say_hello", "input": {"user": "Abigayle"}}],
+            parse_fn="mcp",
+        )
+
+    assert results == ["Hello Abigayle"]
+
+
+@pytest.mark.asyncio
+async def test_run_tools_async_function_executes_correctly():
+    async def shout(message: str) -> str:
+        return message.upper()
+
+    tool = ToolDefinition(callable=shout)
+    ext_mod = cast(Any, ModuleType("mock_async"))
+    ext_mod.jupyter_server_extension_tools = lambda: [tool]
+
+    extension_manager = Mock()
+    extension_manager.extensions = ["mock_async"]
+
+    with patch("importlib.import_module", return_value=ext_mod):
+        results = await run_tools(
+            extension_manager,
+            tool_calls=[{"name": "shout", "input": {"message": "hi"}}],
+            parse_fn="mcp",
+        )
+
+    assert results == ["HI"]
+
+
+@pytest.mark.asyncio
+async def test_run_tools_parser_failure_returns_error():
+    def say_hi(user: str) -> str:
+        return f"Hi {user}"
+
+    tool = ToolDefinition(callable=say_hi)
+    ext_mod = cast(Any, ModuleType("bad_parser"))
+    ext_mod.jupyter_server_extension_tools = lambda: [tool]
+
+    extension_manager = Mock()
+    extension_manager.extensions = ["bad_parser"]
+
+    def bad_parser(_: dict) -> tuple:
+        raise ValueError("Bad parser")
+
+    with patch("importlib.import_module", return_value=ext_mod):
+        results = await run_tools(
+            extension_manager, tool_calls=[{"some": "value"}], parse_fn=bad_parser
+        )
+
+    assert isinstance(results[0], dict)
+    assert "failed to parse" in results[0]["error"]
+
+
+@pytest.mark.asyncio
+async def test_run_tools_with_unknown_tool_name():
+    def tool_a(name: str) -> str:
+        return f"Hello {name}"
+
+    tool = ToolDefinition(callable=tool_a)
+    ext_mod = cast(Any, ModuleType("missing_tool"))
+    ext_mod.jupyter_server_extension_tools = lambda: [tool]
+
+    extension_manager = Mock()
+    extension_manager.extensions = ["missing_tool"]
+
+    with patch("importlib.import_module", return_value=ext_mod):
+        results = await run_tools(
+            extension_manager,
+            tool_calls=[{"name": "not_registered", "input": {"x": 1}}],
+            parse_fn="mcp",
+        )
+
+    assert "Tool call #1 execution failed" in results[0]["error"]
+
+
+@pytest.mark.asyncio
+async def test_run_tools_with_custom_parser():
+    def my_tool(x: int) -> int:
+        return x + 1
+
+    tool = ToolDefinition(callable=my_tool)
+    ext_mod = cast(Any, ModuleType("custom_parser_ext"))
+    ext_mod.jupyter_server_extension_tools = lambda: [tool]
+
+    extension_manager = Mock()
+    extension_manager.extensions = ["custom_parser_ext"]
+
+    def custom_parser(call: dict) -> tuple[str, dict]:
+        return call["custom_name"], call["args"]
+
+    with patch("importlib.import_module", return_value=ext_mod):
+        results = await run_tools(
+            extension_manager,
+            tool_calls=[{"custom_name": "my_tool", "args": {"x": 5}}],
+            parse_fn=custom_parser,
+        )
+
+    assert results == [6]
+
+
+@pytest.mark.asyncio
+async def test_run_tools_parser_returns_invalid_format():
+    def dummy(x: int) -> int:
+        return x
+
+    tool = ToolDefinition(callable=dummy)
+    ext_mod = cast(Any, ModuleType("bad_return"))
+    ext_mod.jupyter_server_extension_tools = lambda: [tool]
+
+    extension_manager = Mock()
+    extension_manager.extensions = ["bad_return"]
+
+    def invalid_parser(_: dict) -> Any:
+        return None  # invalid
+
+    with patch("importlib.import_module", return_value=ext_mod):
+        results = await run_tools(
+            extension_manager, tool_calls=[{"some": "data"}], parse_fn=invalid_parser
+        )
+
+    assert "failed to parse" in results[0]["error"]
+    assert "non-iterable" in results[0]["error"]

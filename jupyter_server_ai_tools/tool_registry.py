@@ -102,7 +102,7 @@ PARSER_MAP: Dict[str, Callable[[Dict[str, Any]], Tuple[str, Dict[str, Any]]]] = 
 # -----------------------
 
 
-async def run_tool(
+async def run_tools(
     extension_manager: Any,
     tool_calls: List[Dict[str, Any]],
     parse_fn: Optional[Union[str, Callable[[Dict[str, Any]], Tuple[str, Dict[str, Any]]]]] = None,
