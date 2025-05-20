@@ -4,7 +4,6 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jupyter_server_ai_tools"
-version = "0.1.0"
 authors = [{name = "Abigayle Mercer", email = "abigaylemercer@gmail.com"}]
 readme = "README.md"
 requires-python = ">=3.8"

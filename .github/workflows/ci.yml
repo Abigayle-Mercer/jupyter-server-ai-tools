@@ -43,7 +43,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: my_server_extension-sdist
+        name: my_server_extension-sdist-${{ matrix.os }}-py${{ matrix.python-version }}
         path: my_server_extension.tar.gz
 
   check_links:
