@@ -10,11 +10,14 @@ ______________________________________________________________________
 
 ## ✨ Features
 
-- ✅ Simple, declarative `ToolDefinition` API
-- ✅ Automatic metadata inference from function signature and docstring
-
-- ✅ Tool discovery across all installed Jupyter extensions
-- ✅ Clean separation between metadata and callable execution
+- ✅ Simple, declarative `ToolDefinition` API for registering callable tools
+- ✅ Automatic metadata inference from Python function signature and docstring
+- ✅ `find_tools()` for discovering tools from all installed Jupyter server extensions
+- ✅ `run_tools()` for executing tools from structured call objects (supports sync, async, and multiple tool call formats)
+- ✅ Built-in support for OpenAI, Anthropic, MCP, and Vercel tool call schemas
+- ✅ Custom parser support for user-defined tool call formats
+- ✅ Clean separation between tool metadata and callable execution
+- ✅ Optional JSON Schema validation to enforce tool structure at definition time
 
 ______________________________________________________________________
 
@@ -53,6 +56,24 @@ def jupyter_server_extension_tools():
 from jupyter_server_ai_tools.tool_registry import find_tools
 
 tools = find_tools(extension_manager)
+```
+
+#### Execute tools via structured calls:
+
+The `run_tools()` function allows dynamic execution of tool calls using a standard format such as `"mcp"`, `"openai"`, `"anthropic"`, or `"vercel"`:
+
+```python
+from jupyter_server_ai_tools.tool_registry import run_tools
+
+tool_calls = [
+    {"name": "greet", "input": {"name": "Abigayle"}}
+]
+
+results = await run_tools(
+    extension_manager=serverapp.extension_manager,
+    tool_calls=tool_calls,
+    parse_fn="mcp"
+)
 ```
 
 ## 🧪 Running Tests
@@ -95,8 +116,7 @@ This system enables:
 
 - Extension authors to register tools with minimal effort
 - Agent builders to dynamically discover and bind tools
-- Optional schema enforcement when needed
-- Future compatibility with MCP and OpenAPI-based agents
+- Compatibility with multiple tool call formats, including OpenAI, Anthropic, MCP, and Vercel
 
 ## 🧹 Uninstall
 
