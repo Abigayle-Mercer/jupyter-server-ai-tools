@@ -17,7 +17,7 @@ __all__ = [
     "parse_vercel_tool_call",
 ]
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 
 def _jupyter_server_extension_points():
