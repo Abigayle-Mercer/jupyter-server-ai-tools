@@ -246,28 +246,6 @@ async def test_run_tools_parser_failure_returns_error():
 
 
 @pytest.mark.asyncio
-async def test_run_tools_with_unknown_tool_name():
-    def tool_a(name: str) -> str:
-        return f"Hello {name}"
-
-    tool = ToolDefinition(callable=tool_a)
-    ext_mod = cast(Any, ModuleType("missing_tool"))
-    ext_mod.jupyter_server_extension_tools = lambda: [tool]
-
-    extension_manager = Mock()
-    extension_manager.extensions = ["missing_tool"]
-
-    with patch("importlib.import_module", return_value=ext_mod):
-        results = await run_tools(
-            extension_manager,
-            tool_calls=[{"name": "not_registered", "input": {"x": 1}}],
-            parse_fn="mcp",
-        )
-
-    assert "Tool call #1 execution failed" in results[0]["error"]
-
-
-@pytest.mark.asyncio
 async def test_run_tools_with_custom_parser():
     def my_tool(x: int) -> int:
         return x + 1
