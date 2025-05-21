@@ -55,11 +55,11 @@ filterwarnings = [
   "ignore:There is no current event loop:DeprecationWarning",
   "ignore:.*coroutine.*was never awaited:RuntimeWarning",
   "ignore:.*Event loop is closed.*",
-  "ignore:.*PytestUnraisableExceptionWarning.*",
+  "ignore:.*unclosed.*ResourceWarning",
+  "ignore:.*unraisable.*PytestUnraisableExceptionWarning",
   "ignore:.*Jupyter is migrating.*:DeprecationWarning",
   "module:make_current is deprecated:DeprecationWarning",
   "module:clear_current is deprecated:DeprecationWarning",
-  "module:Jupyter is migrating its paths to use standard platformdirs:DeprecationWarning",
 ]
 
 [tool.mypy]
