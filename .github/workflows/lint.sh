@@ -14,4 +14,5 @@ black --check --diff .
 mdformat --check *.md || true  # only run if you use README.md
 
 # Unit tests
-pytest
+pytest --rootdir=. --disable-warnings
+

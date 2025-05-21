@@ -1,4 +1,5 @@
 import logging
+import warnings
 from types import ModuleType
 from typing import Any, cast
 from unittest.mock import Mock, patch
@@ -6,7 +7,14 @@ from unittest.mock import Mock, patch
 import pytest
 
 from jupyter_server_ai_tools.models import ToolDefinition
-from jupyter_server_ai_tools.tool_registry import find_tools
+from jupyter_server_ai_tools.tool_registry import find_tools, run_tools
+
+
+def safe_tool(callable_fn, metadata=None):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=ResourceWarning)
+        return ToolDefinition(callable=callable_fn, metadata=metadata)
+
 
 # ---------------------------------------------------------------------
 # ToolDefinition Tests
@@ -14,16 +22,11 @@ from jupyter_server_ai_tools.tool_registry import find_tools
 
 
 def test_tool_definition_metadata_inference():
-    """
-    Test that ToolDefinition correctly infers metadata from a function's
-    name, docstring, parameter names, and type annotations.
-    """
-
     def greet(name: str, age: int):
         """Say hello"""
         return f"Hello {name}, age {age}"
 
-    tool = ToolDefinition(callable=greet)
+    tool = safe_tool(greet)
     metadata = tool.metadata
 
     assert metadata is not None
@@ -35,15 +38,10 @@ def test_tool_definition_metadata_inference():
 
 
 def test_metadata_infers_all_supported_types():
-    """
-    Test that ToolDefinition infers all supported JSON types correctly from Python types.
-    """
-
     def func(a: str, b: int, c: float, d: bool, e: list, f: dict):
-        """Covers all mapped Python types"""
         return None
 
-    tool = ToolDefinition(callable=func)
+    tool = safe_tool(func)
     metadata = tool.metadata
 
     assert metadata is not None
@@ -60,21 +58,16 @@ def test_metadata_infers_all_supported_types():
 
 
 def test_tooldefinition_raises_on_invalid_metadata():
-    """
-    Test that invalid MCP metadata (missing inputSchema) raises a ValueError.
-    """
-
     def greet(name: str):
         return f"Hi {name}"
 
     invalid_metadata = {
         "name": "greet",
         "description": "Greet someone",
-        # Missing "inputSchema"
     }
 
     with pytest.raises(ValueError) as exc_info:
-        ToolDefinition(callable=greet, metadata=invalid_metadata)
+        safe_tool(greet, metadata=invalid_metadata)
 
     assert "inputSchema" in str(exc_info.value)
     assert "greet" in str(exc_info.value)
@@ -86,15 +79,10 @@ def test_tooldefinition_raises_on_invalid_metadata():
 
 
 def test_find_tools_returns_metadata_only():
-    """
-    Test that find_tools() returns only metadata when return_metadata_only=True.
-    """
-
     def say_hi(user: str):
-        """Simple tool"""
         return f"Hi {user}"
 
-    tool = ToolDefinition(callable=say_hi)
+    tool = safe_tool(say_hi)
 
     fake_module = cast(Any, ModuleType("fake_ext"))
     fake_module.jupyter_server_extension_tools = lambda: [tool]
@@ -111,16 +99,10 @@ def test_find_tools_returns_metadata_only():
 
 
 def test_find_tools_returns_full_tool_definition():
-    """
-    Test that find_tools() returns full ToolDefinition dicts with callable when
-    return_metadata_only=False.
-    """
-
     def echo(msg: str):
-        """Repeat message"""
         return msg
 
-    tool = ToolDefinition(callable=echo)
+    tool = safe_tool(echo)
 
     fake_module = cast(Any, ModuleType("fake_ext"))
     fake_module.jupyter_server_extension_tools = lambda: [tool]
@@ -137,9 +119,6 @@ def test_find_tools_returns_full_tool_definition():
 
 
 def test_find_tools_skips_non_tooldefinition(caplog):
-    """
-    Test that find_tools() skips invalid tool entries that are not ToolDefinition instances.
-    """
     bad_tool = {"name": "not_a_real_tool", "description": "I am not a ToolDefinition instance"}
 
     fake_module = cast(Any, ModuleType("bad_ext"))
@@ -158,11 +137,7 @@ def test_find_tools_skips_non_tooldefinition(caplog):
 
 
 def test_find_tools_skips_extensions_without_hook():
-    """
-    Test that find_tools() skips extensions that do not define jupyter_server_extension_tools().
-    """
     fake_module = cast(Any, ModuleType("no_hook_ext"))  # No tool function
-
     extension_manager = Mock()
     extension_manager.extensions = ["no_hook_ext"]
 
@@ -170,3 +145,147 @@ def test_find_tools_skips_extensions_without_hook():
         result = find_tools(extension_manager)
 
     assert result == []
+
+
+# ---------------------------------------------------------------------
+# run_tools() Tests
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_tools_sync_function_executes_correctly():
+    def say_hello(user: str) -> str:
+        return f"Hello {user}"
+
+    tool = safe_tool(say_hello)
+    ext_mod = cast(Any, ModuleType("mock_ext"))
+    ext_mod.jupyter_server_extension_tools = lambda: [tool]
+
+    extension_manager = Mock()
+    extension_manager.extensions = ["mock_ext"]
+
+    with patch("importlib.import_module", return_value=ext_mod):
+        results = await run_tools(
+            extension_manager,
+            tool_calls=[{"name": "say_hello", "input": {"user": "Abigayle"}}],
+            parse_fn="mcp",
+        )
+
+    assert results == ["Hello Abigayle"]
+
+
+@pytest.mark.asyncio
+async def test_run_tools_async_function_executes_correctly():
+    async def shout(message: str) -> str:
+        return message.upper()
+
+    tool = safe_tool(shout)
+    ext_mod = cast(Any, ModuleType("mock_async"))
+    ext_mod.jupyter_server_extension_tools = lambda: [tool]
+
+    extension_manager = Mock()
+    extension_manager.extensions = ["mock_async"]
+
+    with patch("importlib.import_module", return_value=ext_mod):
+        results = await run_tools(
+            extension_manager,
+            tool_calls=[{"name": "shout", "input": {"message": "hi"}}],
+            parse_fn="mcp",
+        )
+
+    assert results == ["HI"]
+
+
+@pytest.mark.asyncio
+async def test_run_tools_parser_failure_returns_error():
+    def say_hi(user: str) -> str:
+        return f"Hi {user}"
+
+    tool = safe_tool(say_hi)
+    ext_mod = cast(Any, ModuleType("bad_parser"))
+    ext_mod.jupyter_server_extension_tools = lambda: [tool]
+
+    extension_manager = Mock()
+    extension_manager.extensions = ["bad_parser"]
+
+    def bad_parser(_: dict) -> tuple:
+        raise ValueError("Bad parser")
+
+    with patch("importlib.import_module", return_value=ext_mod):
+        results = await run_tools(
+            extension_manager, tool_calls=[{"some": "value"}], parse_fn=bad_parser
+        )
+
+    assert isinstance(results[0], dict)
+    assert "failed to parse" in results[0]["error"]
+
+
+@pytest.mark.asyncio
+async def test_run_tools_with_unknown_tool_name():
+    def tool_a(name: str) -> str:
+        return f"Hello {name}"
+
+    tool = safe_tool(tool_a)
+    ext_mod = cast(Any, ModuleType("missing_tool"))
+    ext_mod.jupyter_server_extension_tools = lambda: [tool]
+
+    extension_manager = Mock()
+    extension_manager.extensions = ["missing_tool"]
+
+    with patch("importlib.import_module", return_value=ext_mod):
+        results = await run_tools(
+            extension_manager,
+            tool_calls=[{"name": "not_registered", "input": {"x": 1}}],
+            parse_fn="mcp",
+        )
+
+    assert "Tool call #1 execution failed" in results[0]["error"]
+
+
+@pytest.mark.asyncio
+async def test_run_tools_with_custom_parser():
+    def my_tool(x: int) -> int:
+        return x + 1
+
+    tool = safe_tool(my_tool)
+    ext_mod = cast(Any, ModuleType("custom_parser_ext"))
+    ext_mod.jupyter_server_extension_tools = lambda: [tool]
+
+    extension_manager = Mock()
+    extension_manager.extensions = ["custom_parser_ext"]
+
+    def custom_parser(call: dict) -> tuple[str, dict]:
+        return call["custom_name"], call["args"]
+
+    with patch("importlib.import_module", return_value=ext_mod):
+        results = await run_tools(
+            extension_manager,
+            tool_calls=[{"custom_name": "my_tool", "args": {"x": 5}}],
+            parse_fn=custom_parser,
+        )
+
+    assert results == [6]
+
+
+@pytest.mark.asyncio
+async def test_run_tools_parser_returns_invalid_format():
+    def dummy(x: int) -> int:
+        return x
+
+    tool = safe_tool(dummy)
+    ext_mod = cast(Any, ModuleType("bad_return"))
+    ext_mod.jupyter_server_extension_tools = lambda: [tool]
+
+    extension_manager = Mock()
+    extension_manager.extensions = ["bad_return"]
+
+    def invalid_parser(_: dict) -> Any:
+        return None  # invalid
+
+    with patch("importlib.import_module", return_value=ext_mod):
+        results = await run_tools(
+            extension_manager, tool_calls=[{"some": "data"}], parse_fn=invalid_parser
+        )
+
+    assert "failed to parse" in results[0]["error"]
+    assert "non-iterable" in results[0]["error"]
