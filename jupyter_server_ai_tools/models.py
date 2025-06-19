@@ -1,10 +1,10 @@
-from typing import Callable, Optional
+from typing import Callable
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
 
 class Tool(BaseModel):
-    callable: Callable
+    callable: Callable = Field(exclude=True)
     read: bool = False
     write: bool = False
     execute: bool = False
@@ -12,7 +12,7 @@ class Tool(BaseModel):
     _callable_name: str = PrivateAttr()
 
     @model_validator(mode="after")  # Use model_validator for Pydantic V2+
-    def populate_callable_name(self):
+    def set_callable_name(self):
         if hasattr(self.callable, "__name__") and self.callable.__name__:
             self._callable_name = self.callable.__name__
         else:
@@ -80,6 +80,13 @@ class ToolkitRegistry(BaseModel):
 
     def register_toolkit(self, toolkit: Toolkit):
         self.toolkits.add(toolkit)
+
+    def list_toolkits(self):
+        toolkits = ToolkitSet()
+        for toolkit in self.toolkits:
+            toolkits.add(toolkit)
+        
+        return toolkits
 
     def get_toolkit(
         self,
