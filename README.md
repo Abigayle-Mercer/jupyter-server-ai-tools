@@ -55,8 +55,7 @@ class MyExtensionApp(ExtensionApp)
     def toolkit_registry(self):
         return self.settings["toolkit_registry"]
 
-    # Register toolkits in `start` method
-    def start(self):
+    async def _start_jupyter_server_extension(self):
         # Create a tool
         greet_tool = Tool(callable=greet, read=True)
         
