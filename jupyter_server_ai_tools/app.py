@@ -12,12 +12,15 @@ class AiServerToolsApp(ExtensionApp):
         (r"api/toolkits", ToolkitHandler),
     ]
 
+    @property
+    def toolkit_registry(self):
+        return self.settings["toolkit_registry"]
+
     def initialize_settings(self):
-        self._registry = ToolkitRegistry()
-        self.settings["toolkit_registry"] = self._registry
+        self.settings["toolkit_registry"] = ToolkitRegistry()
 
     def register_toolkit(self, toolkit: Toolkit):
-        self._registry.register_toolkit(toolkit)
+        self.toolkit_registry.register_toolkit(toolkit)
 
     def get_toolkit(
         self, 
@@ -27,6 +30,6 @@ class AiServerToolsApp(ExtensionApp):
         execute: bool = False, 
         delete: bool = False
     ) -> Toolkit:
-        return self._registry.get_toolkit(
+        return self.toolkit_registry.get_toolkit(
             name=name, read=read, write=write, execute=execute, delete=delete
         )

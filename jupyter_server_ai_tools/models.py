@@ -1,42 +1,68 @@
+import re
 from typing import Callable
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+def get_doc_description(func: Callable) -> str:
+    """
+    Extract the first paragraph from a function's docstring using regex.
+    
+    Args:
+        func (callable): The function to extract the description from
+    
+    Returns:
+        str: The first paragraph of the docstring, or an empty string if no docstring exists
+    """
+    if not func.__doc__:
+        return ""
+    
+    # Use regex to match the first paragraph (text before the first double newline or end of string)
+    match = re.match(r'^(.*?)(?:\n\n|$)', func.__doc__.strip(), re.DOTALL)
+    
+    return match.group(1).strip() if match else ""
 
 
 class Tool(BaseModel):
     callable: Callable = Field(exclude=True)
+    name: str | None = None
+    description: str | None = None
     read: bool = False
     write: bool = False
     execute: bool = False
     delete: bool = False
-    _callable_name: str = PrivateAttr()
 
-    @model_validator(mode="after")  # Use model_validator for Pydantic V2+
-    def set_callable_name(self):
-        if hasattr(self.callable, "__name__") and self.callable.__name__:
-            self._callable_name = self.callable.__name__
-        else:
-            raise ValueError("Unable to extract name from callable")
+    @model_validator(mode="after")
+    def set_name_description(self):
+        if not self.name:
+            if hasattr(self.callable, "__name__") and self.callable.__name__:
+                self.name = self.callable.__name__
+            else:
+                raise ValueError("Unable to extract name from callable")
+        
+        if not self.description:
+            self.description = get_doc_description(self.callable)
+
         return self
 
     def __eq__(self, other):
         if not isinstance(other, Tool):
             return False
-        return self._callable_name == other._callable_name
+        return self.name == other.name
 
     def __hash__(self):
-        return hash(self._callable_name)
+        return hash(self.name)
 
 
 class ToolSet(set):
     def add(self, item):
         if item in self:
-            raise ValueError(f"Tool with name '{item._callable_name}' already exists in the set")
+            raise ValueError(f"Tool with name '{item.name}' already exists in the set")
         super().add(item)
 
 
 class Toolkit(BaseModel):
     name: str
+    description: str | None = None
     tools: ToolSet = Field(default_factory=ToolSet)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -73,9 +99,15 @@ class ToolkitSet(set):
             raise ValueError(f"Toolkit with name '{item.name}' already exists.")
         super().add(item)
 
+    def model_dump_json(self):
+        items = []
+        for item in self:
+            items.append(item.model_dump_json())
+
+        return "[" + ",".join(items) + "]"
 
 class ToolkitRegistry(BaseModel):
-    toolkits: ToolkitSet[Toolkit]
+    toolkits: ToolkitSet[Toolkit] = Field(default_factory=ToolkitSet)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def register_toolkit(self, toolkit: Toolkit):
