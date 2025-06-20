@@ -43,10 +43,36 @@ def greet(name: str):
     """Say hello to someone."""
     return f"Hello, {name}!"
 
-# In the extension app
-def start(self):
-    # Get the registry from the extension manager
-    registry = serverapp.extension_manager.extensions.get("jupyter_server_ai_tools")
+```
+
+##### For configurable extension apps
+
+```python
+class MyExtensionApp(ExtensionApp)
+
+    # Get the tookit registry from settings
+    @property
+    def toolkit_registry(self):
+        return self.settings["toolkit_registry"]
+
+    # Register toolkits in `start` method
+    def start(self):
+        # Create a tool
+        greet_tool = Tool(callable=greet, read=True)
+        
+        # Create a toolkit
+        greeting_toolkit = Toolkit(name="GreetingToolkit")
+        greeting_toolkit.add_tool(greet_tool)
+        
+        # Register the toolkit
+        self.toolkit_registry.register_toolkit(greeting_toolkit)
+
+```
+
+##### For basic extensions
+```python
+def _start_jupyter_server_extension(serverapp):
+    toolkit_registry = serverapp.web_app.settings["toolkit_registry"]
     
     # Create a tool
     greet_tool = Tool(callable=greet, read=True)
@@ -56,7 +82,8 @@ def start(self):
     greeting_toolkit.add_tool(greet_tool)
     
     # Register the toolkit
-    registry.register_toolkit(greeting_toolkit)
+    self.toolkit_registry.register_toolkit(greeting_toolkit)
+
 ```
 
 #### Retrieve Toolkits:
