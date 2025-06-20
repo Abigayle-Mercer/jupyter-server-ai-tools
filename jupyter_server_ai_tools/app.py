@@ -4,7 +4,7 @@ from .handlers import ToolkitHandler
 from .models import Toolkit, ToolkitRegistry
 
 
-class AiServerToolsApp(ExtensionApp):
+class AIServerToolsApp(ExtensionApp):
     name = "jupyter_server_ai_tools"  
     load_other_extensions = True
 
@@ -12,15 +12,12 @@ class AiServerToolsApp(ExtensionApp):
         (r"api/toolkits", ToolkitHandler),
     ]
 
-    @property
-    def toolkit_registry(self):
-        return self.settings["toolkit_registry"]
-
     def initialize_settings(self):
-        self.settings["toolkit_registry"] = ToolkitRegistry()
+        self._registry = ToolkitRegistry()
+        self.settings["toolkit_registry"] = self
 
     def register_toolkit(self, toolkit: Toolkit):
-        self.toolkit_registry.register_toolkit(toolkit)
+        self._registry.register_toolkit(toolkit)
 
     def get_toolkit(
         self, 
@@ -30,6 +27,9 @@ class AiServerToolsApp(ExtensionApp):
         execute: bool = False, 
         delete: bool = False
     ) -> Toolkit:
-        return self.toolkit_registry.get_toolkit(
+        return self._registry.get_toolkit(
             name=name, read=read, write=write, execute=execute, delete=delete
         )
+    
+    def list_toolkits(self):
+        return self._registry.list_toolkits()

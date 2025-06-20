@@ -14,7 +14,7 @@ ______________________________________________________________________
 - ✅ Toolkit registration with unique names
 - ✅ Retrieve toolkits by name and capabilities
 - ✅ Clean separation between tool metadata and callable execution
-- ✅ Optional tool capability filtering (read, write, execute)
+- ✅ Optional tool capability filtering (read, write, execute, delete)
 
 ______________________________________________________________________
 
