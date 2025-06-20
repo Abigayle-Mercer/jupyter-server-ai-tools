@@ -71,7 +71,7 @@ class MyExtensionApp(ExtensionApp)
 
 ##### For basic extensions
 ```python
-def _start_jupyter_server_extension(serverapp):
+async def _start_jupyter_server_extension(serverapp):
     toolkit_registry = serverapp.web_app.settings["toolkit_registry"]
     
     # Create a tool
