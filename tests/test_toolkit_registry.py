@@ -1,9 +1,6 @@
 import pytest
-from typing import Callable
-from jupyter_server_ai_tools.models import Tool, Toolkit, ToolSet, ToolkitRegistry, ToolkitSet
 
-# Existing tests from previous file...
-# (Keep all the existing tests from the previous file)
+from jupyter_server_ai_tools.models import Tool, Toolkit, ToolkitRegistry, ToolkitSet, ToolSet
 
 
 def test_toolkit_find_tools():
