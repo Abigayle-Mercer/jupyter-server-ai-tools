@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 import pytest
@@ -9,19 +10,20 @@ def jp_server_config():
         "ServerApp": {
             "jpserver_extensions": {
                 "jupyter_server_ai_tools": True,
-                "tests.mockextensions.mockext_tool": True,
+                "tests.mock_extension": True,
             }
         }
     }
 
 
-async def test_tools_handler_with_mock_extension(jp_fetch):
-    response = await jp_fetch("jupyter_server_ai_tools", "tools")
+async def test_toolkit_handler(jp_fetch):
+    response = await jp_fetch("api", "toolkits")
     assert response.code == 200
 
-    payload = json.loads(response.body)
-    assert "discovered_tools" in payload
-    tools = payload["discovered_tools"]
-    assert isinstance(tools, list)
-    assert tools[0]["name"] == "say_hello"
-    assert "inputSchema" in tools[0]
+    toolkits = json.loads(response.body)
+    assert isinstance(toolkits, list)
+    assert len(toolkits) == 1
+
+    toolkit = toolkits[0]
+    assert toolkit["name"] == "hello_toolkit"
+    assert len(toolkit.tools) == 1

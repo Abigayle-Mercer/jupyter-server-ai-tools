@@ -3,14 +3,16 @@ import json
 import tornado
 from jupyter_server.base.handlers import APIHandler
 
-from jupyter_server_ai_tools.tool_registry import find_tools
 
+class ToolkitHandler(APIHandler):
 
-class ListToolInfoHandler(APIHandler):
+    @property
+    def toolkit_registry(self):
+        return self.settings["toolkit_registry"]
+    
     @tornado.web.authenticated
     async def get(self):
-        metadata_only = True
         assert self.serverapp is not None
-        raw_tools = find_tools(self.serverapp.extension_manager, return_metadata_only=metadata_only)
-        # If metadata_only=True, raw_tools is already safe
-        self.finish(json.dumps({"discovered_tools": raw_tools}))
+        toolkits = self.toolkit_registry.list_toolkits()
+        self.finish(toolkits.model_dump_json())
+        

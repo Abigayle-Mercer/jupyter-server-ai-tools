@@ -4,20 +4,17 @@
 
 A Jupyter Server extension for discovering and aggregating callable tools from other extensions.
 
-This project provides a structured way for extensions to declare tools using `ToolDefinition` objects, and for agents or other consumers to retrieve those tools — with optional metadata validation.
+This project provides a structured way for extensions to declare tools using `Tool` objects, and for agents or other consumers to retrieve those tools.
 
 ______________________________________________________________________
 
 ## ✨ Features
 
-- ✅ Simple, declarative `ToolDefinition` API for registering callable tools
-- ✅ Automatic metadata inference from Python function signature and docstring
-- ✅ `find_tools()` for discovering tools from all installed Jupyter server extensions
-- ✅ `run_tools()` for executing tools from structured call objects (supports sync, async, and multiple tool call formats)
-- ✅ Built-in support for OpenAI, Anthropic, MCP, and Vercel tool call schemas
-- ✅ Custom parser support for user-defined tool call formats
+- ✅ Simple, declarative `Toolkit` API for registering callable tools
+- ✅ Toolkit registration with unique names
+- ✅ Retrieve toolkits by name and capabilities
 - ✅ Clean separation between tool metadata and callable execution
-- ✅ Optional JSON Schema validation to enforce tool structure at definition time
+- ✅ Optional tool capability filtering (read, write, execute, delete)
 
 ______________________________________________________________________
 
@@ -40,40 +37,62 @@ pip install -e ".[lint,test]"
 #### Expose tools in your own extensions:
 
 ```python
-from jupyter_server_ai_tools.models import ToolDefinition
+from jupyter_server_ai_tools.models import Tool, Toolkit
 
 def greet(name: str):
     """Say hello to someone."""
     return f"Hello, {name}!"
 
-def jupyter_server_extension_tools():
-    return [ToolDefinition(callable=greet)]
 ```
 
-#### Discover tools from all extensions:
+##### For configurable extension apps
 
 ```python
-from jupyter_server_ai_tools.tool_registry import find_tools
+class MyExtensionApp(ExtensionApp)
 
-tools = find_tools(extension_manager)
+    # Get the tookit registry from settings
+    @property
+    def toolkit_registry(self):
+        return self.settings["toolkit_registry"]
+
+    async def _start_jupyter_server_extension(self):
+        # Create a tool
+        greet_tool = Tool(callable=greet, read=True)
+        
+        # Create a toolkit
+        greeting_toolkit = Toolkit(name="GreetingToolkit")
+        greeting_toolkit.add_tool(greet_tool)
+        
+        # Register the toolkit
+        self.toolkit_registry.register_toolkit(greeting_toolkit)
+
 ```
 
-#### Execute tools via structured calls:
+##### For basic extensions
+```python
+async def _start_jupyter_server_extension(serverapp):
+    toolkit_registry = serverapp.web_app.settings["toolkit_registry"]
+    
+    # Create a tool
+    greet_tool = Tool(callable=greet, read=True)
+    
+    # Create a toolkit
+    greeting_toolkit = Toolkit(name="GreetingToolkit")
+    greeting_toolkit.add_tool(greet_tool)
+    
+    # Register the toolkit
+    self.toolkit_registry.register_toolkit(greeting_toolkit)
 
-The `run_tools()` function allows dynamic execution of tool calls using a standard format such as `"mcp"`, `"openai"`, `"anthropic"`, or `"vercel"`:
+```
+
+#### Retrieve Toolkits:
 
 ```python
-from jupyter_server_ai_tools.tool_registry import run_tools
+# Get a specific toolkit
+greeting_toolkit = registry.get_toolkit("GreetingToolkit")
 
-tool_calls = [
-    {"name": "greet", "input": {"name": "Abigayle"}}
-]
-
-results = await run_tools(
-    extension_manager=serverapp.extension_manager,
-    tool_calls=tool_calls,
-    parse_fn="mcp"
-)
+# Get toolkit with specific tool capabilities
+read_toolkits = registry.get_toolkit("GreetingToolkit", read=True)
 ```
 
 ## 🧪 Running Tests
@@ -90,36 +109,15 @@ pip install -e ".[lint]"
 bash .github/workflows/lint.sh
 ```
 
-## Tool Output Example
-
-Given the `greet()` tool above, `find_tools(return_metadata_only=True)` will return:
-
-```json
-[
-  {
-    "name": "greet",
-    "description": "Say hello to someone.",
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" }
-      },
-      "required": ["name"]
-    }
-  }
-]
-```
-
 ## Impact
 
 This system enables:
 
 - Extension authors to register tools with minimal effort
-- Agent builders to dynamically discover and bind tools
-- Compatibility with multiple tool call formats, including OpenAI, Anthropic, MCP, and Vercel
+- Flexible tool discovery and retrieval
+- Capability-based tool filtering
 
 ## 🧹 Uninstall
 
 ```bash
 pip uninstall jupyter_server_ai_tools
-```
