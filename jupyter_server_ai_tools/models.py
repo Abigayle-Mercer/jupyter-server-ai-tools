@@ -3,22 +3,23 @@ from typing import Callable
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+
 def get_doc_description(func: Callable) -> str:
     """
     Extract the first paragraph from a function's docstring using regex.
-    
+
     Args:
         func (callable): The function to extract the description from
-    
+
     Returns:
         str: The first paragraph of the docstring, or an empty string if no docstring exists
     """
     if not func.__doc__:
         return ""
-    
+
     # Use regex to match the first paragraph (text before the first double newline or end of string)
-    match = re.match(r'^(.*?)(?:\n\n|$)', func.__doc__.strip(), re.DOTALL)
-    
+    match = re.match(r"^(.*?)(?:\n\n|$)", func.__doc__.strip(), re.DOTALL)
+
     return match.group(1).strip() if match else ""
 
 
@@ -38,9 +39,16 @@ class Tool(BaseModel):
                 self.name = self.callable.__name__
             else:
                 raise ValueError("Unable to extract name from callable")
-        
+
         if not self.description:
             self.description = get_doc_description(self.callable)
+
+        return self
+
+    @model_validator(mode="after")
+    def resolve_modes(self):
+        if self.write:
+            self.read = True
 
         return self
 
@@ -73,12 +81,13 @@ class Toolkit(BaseModel):
         self, read: bool = False, write: bool = False, execute: bool = False, delete: bool = False
     ) -> ToolSet[Tool]:
         toolset = ToolSet()
+
         for tool in self.tools:
             if (
-                tool.read == read
-                and tool.write == write
-                and tool.execute == execute
-                and tool.delete == delete
+                (delete and tool.delete)
+                or (execute and not tool.execute)
+                or (write and tool.write)
+                or (read and tool.read)
             ):
                 toolset.add(tool)
 
@@ -106,6 +115,7 @@ class ToolkitSet(set):
 
         return "[" + ",".join(items) + "]"
 
+
 class ToolkitRegistry(BaseModel):
     toolkits: ToolkitSet[Toolkit] = Field(default_factory=ToolkitSet)
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -117,7 +127,7 @@ class ToolkitRegistry(BaseModel):
         toolkits = ToolkitSet()
         for toolkit in self.toolkits:
             toolkits.add(toolkit)
-        
+
         return toolkits
 
     def get_toolkit(
@@ -136,7 +146,7 @@ class ToolkitRegistry(BaseModel):
             return Toolkit(name=toolkit_in_registry.name, tools=tools)
         else:
             raise LookupError(f"Tookit with {name=} not found in registry.")
-    
+
     def _find_toolkit(self, name: str) -> Toolkit | None:
         for toolkit in self.toolkits:
             if toolkit.name == name:
