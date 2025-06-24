@@ -36,11 +36,11 @@ def test_toolkit_find_tools():
 
     # Test 2: Find tools with read permission
     read_tools = toolkit.find_tools(read=True)
-    assert len(read_tools) == 5
+    assert len(read_tools) == 3
     assert read_only_tool in read_tools
-    assert write_tool in read_tools  # write implies read
+    assert write_tool not in read_tools  # write implies read
     assert read_execute_tool in read_tools
-    assert write_execute_tool in read_tools
+    assert write_execute_tool not in read_tools
     assert all_perms_tool in read_tools
     assert execute_tool not in read_tools
     assert delete_tool not in read_tools
@@ -62,15 +62,15 @@ def test_toolkit_find_tools():
     execute_tools = toolkit.find_tools(execute=True)
     assert len(execute_tools) == 4
     assert (
-        execute_tool not in execute_tools
-    )  # Because the condition is (execute and not tool.execute)
-    assert read_execute_tool not in execute_tools
-    assert write_execute_tool not in execute_tools
-    assert all_perms_tool not in execute_tools
-    assert read_only_tool in execute_tools
-    assert write_tool in execute_tools
-    assert delete_tool in execute_tools
-    assert no_perms_tool in execute_tools
+        execute_tool in execute_tools
+    )
+    assert read_execute_tool in execute_tools
+    assert write_execute_tool in execute_tools
+    assert all_perms_tool in execute_tools
+    assert read_only_tool not in execute_tools
+    assert write_tool not in execute_tools
+    assert delete_tool not in execute_tools
+    assert no_perms_tool not in execute_tools
 
     # Test 5: Find tools with delete permission
     delete_tools = toolkit.find_tools(delete=True)
@@ -86,12 +86,12 @@ def test_toolkit_find_tools():
 
     # Test 6: Combined permissions (read and delete)
     read_delete_tools = toolkit.find_tools(read=True, delete=True)
-    assert len(read_delete_tools) == 6
+    assert len(read_delete_tools) == 4
     assert read_only_tool in read_delete_tools
-    assert write_tool in read_delete_tools
+    assert write_tool not in read_delete_tools
     assert delete_tool in read_delete_tools
     assert read_execute_tool in read_delete_tools
-    assert write_execute_tool in read_delete_tools
+    assert write_execute_tool not in read_delete_tools
     assert all_perms_tool in read_delete_tools
     assert execute_tool not in read_delete_tools
     assert no_perms_tool not in read_delete_tools
@@ -102,7 +102,7 @@ def test_toolkit_find_tools():
     assert read_only_tool in all_perm_tools
     assert write_tool in all_perm_tools
     assert delete_tool in all_perm_tools
-    assert no_perms_tool in all_perm_tools
+    assert no_perms_tool not in all_perm_tools
     assert read_execute_tool in all_perm_tools
     assert write_execute_tool in all_perm_tools
     assert all_perms_tool in all_perm_tools

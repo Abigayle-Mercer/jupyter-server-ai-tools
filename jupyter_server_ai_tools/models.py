@@ -45,13 +45,6 @@ class Tool(BaseModel):
 
         return self
 
-    @model_validator(mode="after")
-    def resolve_modes(self):
-        if self.write:
-            self.read = True
-
-        return self
-
     def __eq__(self, other):
         if not isinstance(other, Tool):
             return False
@@ -85,7 +78,7 @@ class Toolkit(BaseModel):
         for tool in self.tools:
             if (
                 (delete and tool.delete)
-                or (execute and not tool.execute)
+                or (execute and tool.execute)
                 or (write and tool.write)
                 or (read and tool.read)
             ):
