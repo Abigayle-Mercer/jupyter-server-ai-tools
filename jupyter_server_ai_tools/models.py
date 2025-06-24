@@ -74,16 +74,32 @@ class Toolkit(BaseModel):
         self, read: bool = False, write: bool = False, execute: bool = False, delete: bool = False
     ) -> ToolSet[Tool]:
         toolset = ToolSet()
-
+        
+        # Check if any parameters are True
+        any_param_true = read or write or execute or delete
+        
         for tool in self.tools:
-            if (
-                (delete and tool.delete)
-                or (execute and tool.execute)
-                or (write and tool.write)
-                or (read and tool.read)
-            ):
+            # If no parameters are True, include all tools
+            if not any_param_true:
                 toolset.add(tool)
-
+                continue
+                
+            # Check if tool matches all specified criteria
+            matches_all = True
+            
+            # Only check criteria that were explicitly set to True
+            if read and not tool.read:
+                matches_all = False
+            if write and not tool.write:
+                matches_all = False
+            if execute and not tool.execute:
+                matches_all = False
+            if delete and not tool.delete:
+                matches_all = False
+                
+            if matches_all:
+                toolset.add(tool)
+                
         return toolset
 
     def __eq__(self, other):
